@@ -21,8 +21,7 @@
 
 (deftest select-unit-test
   (testing "simple record selection"
-    (let [responses [{:status 200
-                      :body {:records [fake-record-response]
+    (let [responses [{:body {:records [fake-record-response]
                              :offset "rec456"}}]
           server (mock-server responses)
           result (airtable/select {:endpoint-url (:url server)
@@ -31,12 +30,44 @@
                                    :table "My Table"})
           request (take-mock-request server)
           headers (:headers request)]
-      (is (= "/v0/base123/My%20Table" (:path request)))
+      (is (= "/v0/base123/My%20Table" (:uri request)))
+      (is (= {} (:query-params request)))
       (is (= :get (:request-method request)))
       (is (= expected-user-agent (headers "user-agent")))
       (is (= "0.1.0" (headers "x-api-version")))
       (is (= "rec456" (:offset result)))
-      (is (= (list fake-record) (:records result))))))
+      (is (= (list fake-record) (:records result)))))
+  (testing "selecting no records"
+    (let [server (mock-server [{:body {:records []}}])
+          result (airtable/select {:endpoint-url (:url server)
+                                   :api-key "abc123"
+                                   :base "base123"
+                                   :table "My Table"})]
+      (is (nil? (:offset result)))
+      (is (empty? (:records result)))))
+  (testing "adding additional options"
+    (let [server (mock-server [{:body {:records []}}])
+          _ (airtable/select {:endpoint-url (:url server)
+                              :api-key "abc123"
+                              :base "base123"
+                              :table "My Table"
+                              :fields ["Foo Boo" "Bing Bong"]
+                              :filter-by-formula "NOT({X} = 2)"
+                              :max-records 42
+                              :page-size 69
+                              :sort [{:field "Foo Boo"
+                                      :direction :desc}]
+                              :view "My View"
+                              :cell-format :json
+                              :time-zone "Africa/Algiers"
+                              :user-locale "bo"
+                              :ignored-param "should not be included"})
+          request (take-mock-request server)]
+      (println "===>" (:path request))
+      (is (= "/v0/base123/My%20Table" (:uri request)))
+      (is (= {"fields[]" ["Bing+Bong" "Foo+Boo"]
+              "filterByFormula" ["NOT%28%7BX%7D+%3D+2%29"]} (:query-params request)))
+    )))
 
 (deftest select-integration-test
   (testing "simple record selection"
@@ -62,5 +93,4 @@
                   "Formula" 12
                   "Checkbox" true} (second record-fields)))
           (is (= {"Primary" 3
-                  "Formula" 13} (last record-fields)))
-          )))))
+                  "Formula" 13} (last record-fields))))))))

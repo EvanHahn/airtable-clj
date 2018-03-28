@@ -2,6 +2,7 @@
   (:require [clojure.string :as string]
             [cheshire.core :as json])
   (:import [okhttp3.mockwebserver MockWebServer MockResponse]
+           [java.net URL]
            [java.util.logging Logger Level]))
 
 (defn- disable-mockwebserver-logger []
@@ -19,13 +20,22 @@
     result))
 
 (defn- mock-request-to-map [mock-request]
-  {:path (.getPath mock-request)
-   :request-method (-> (.getMethod mock-request) string/lower-case keyword)
-   :headers (->> (.getHeaders mock-request)
-                 .toMultimap
-                 (map (fn [[k v]] [k (first v)]))
-                 (into {}))
-   })
+  (let [url (URL. "http" "example.com" -1 (.getPath mock-request))]
+    {:uri (.getPath url)
+     :path (.getFile url)
+     :query-params (if-let [query (.getQuery url)]
+                     (->> (string/split query #"&")
+                          (map #(string/split % #"="))
+                          (reduce (fn [params [k v]] (update params k conj v)) {})
+                          (map (fn [[k v]] [k (sort v)]))
+                          (into {}))
+                     {})
+     :request-method (-> (.getMethod mock-request) string/lower-case keyword)
+     :headers (->> (.getHeaders mock-request)
+                   .toMultimap
+                   (map (fn [[k v]] [k (first v)]))
+                   (into {}))
+     }))
    ;; :body (-> (.getBody mock-request) slurp json/parse-string)})
 
 (defn mock-server [responses]
