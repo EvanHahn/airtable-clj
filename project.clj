@@ -4,4 +4,6 @@
   :license {:name "MIT License"
             :url "https://opensource.org/licenses/MIT"}
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [clj-http "3.8.0"]])
+                 [clj-http "3.8.0"]
+                 [cheshire "5.8.0"]]
+  :profiles {:dev {:dependencies [[com.squareup.okhttp3/mockwebserver "3.10.0"]]}})
