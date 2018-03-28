@@ -21,7 +21,10 @@
 (defn- mock-request-to-map [mock-request]
   {:path (.getPath mock-request)
    :request-method (-> (.getMethod mock-request) string/lower-case keyword)
-   :headers (-> (.getHeaders mock-request) .toMultimap)
+   :headers (->> (.getHeaders mock-request)
+                 .toMultimap
+                 (map (fn [[k v]] [k (first v)]))
+                 (into {}))
    })
    ;; :body (-> (.getBody mock-request) slurp json/parse-string)})
 
