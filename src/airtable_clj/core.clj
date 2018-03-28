@@ -1,7 +1,8 @@
 (ns airtable-clj.core
   (:require [clj-http.client :as http]
             [cheshire.core :as json]
-            [airtable-clj.util :refer [parse-time
+            [airtable-clj.util :refer [camelize-keyword
+                                       parse-time
                                        make-url
                                        user-agent
                                        api-version]]))
@@ -11,18 +12,30 @@
    :fields (record "fields")
    :created-time (parse-time (record "createdTime"))})
 
+(def ^:private select-options
+  (->> [:fields
+        :filter-by-formula
+        :max-records
+        :page-size
+        :view
+        :cell-format
+        :time-zone
+        :user-locale]
+       (map (fn [param] [param (camelize-keyword param)]))
+       (into {})))
+
 (defn select
   "Select records from an Airtable base."
   [{:keys [endpoint-url
            api-key
            base
-           table
-           fields
-           filter-by-formula]}]
+           table] :as options}]
   (let [url (make-url endpoint-url base table)
-        query-params (cond-> {}
-                       fields (assoc "fields" fields)
-                       filter-by-formula (assoc "filterByFormula" filter-by-formula))
+        query-params (->> (select-keys options (keys select-options))
+                          (map (fn [[k v]]
+                                 [(k select-options)
+                                  (if (keyword? v) (name v) v)]))
+                          (into {}))
         headers {"X-API-Version" api-version
                  "Authorization" (str "Bearer " api-key)
                  "User-Agent" user-agent}

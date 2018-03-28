@@ -1,5 +1,6 @@
 (ns airtable-clj.util
-  (:require [environ.core :refer [env]])
+  (:require [clojure.string :as string]
+            [environ.core :refer [env]])
   (:import [java.net URL]
            [java.text SimpleDateFormat]))
 
@@ -19,3 +20,7 @@
         port (.getPort base-url)
         path (str "/v0/" base "/" table)]
     (-> (URL. protocol host port path) str)))
+
+(defn camelize-keyword [k]
+  (-> (name k)
+      (string/replace #"-(\w)" (fn ([[_ c]] (string/upper-case c))))))

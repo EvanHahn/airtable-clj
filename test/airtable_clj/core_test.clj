@@ -55,19 +55,24 @@
                               :filter-by-formula "NOT({X} = 2)"
                               :max-records 42
                               :page-size 69
-                              :sort [{:field "Foo Boo"
-                                      :direction :desc}]
+                              ;; TODO
+                              ;; :sort [{:field "Foo Boo"
+                              ;;         :direction :desc}]
                               :view "My View"
                               :cell-format :json
                               :time-zone "Africa/Algiers"
                               :user-locale "bo"
                               :ignored-param "should not be included"})
           request (take-mock-request server)]
-      (println "===>" (:path request))
       (is (= "/v0/base123/My%20Table" (:uri request)))
       (is (= {"fields[]" ["Bing+Bong" "Foo+Boo"]
-              "filterByFormula" ["NOT%28%7BX%7D+%3D+2%29"]} (:query-params request)))
-    )))
+              "filterByFormula" ["NOT%28%7BX%7D+%3D+2%29"]
+              "maxRecords" ["42"]
+              "pageSize" ["69"]
+              "view" ["My+View"]
+              "cellFormat" ["json"]
+              "timeZone" ["Africa%2FAlgiers"]
+              "userLocale" ["bo"]} (:query-params request))))))
 
 (deftest select-integration-test
   (testing "simple record selection"
