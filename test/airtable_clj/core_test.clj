@@ -3,7 +3,8 @@
             [cheshire.core :as json]
             [environ.core :refer [env]]
             [airtable-clj.test-helpers :refer [mock-server take-mock-request]]
-            [airtable-clj.core :as airtable]))
+            [airtable-clj.core :as airtable]
+            [airtable-clj.util :refer [handle-api-error]]))
 
 (def fake-record-response
   {"id" "rec123"
@@ -72,7 +73,16 @@
               "view" ["My+View"]
               "cellFormat" ["json"]
               "timeZone" ["Africa%2FAlgiers"]
-              "userLocale" ["bo"]} (:query-params request))))))
+              "userLocale" ["bo"]} (:query-params request)))))
+  (testing "calls out to handle-api-error"
+    (let [server (mock-server [{:body {:records []}}])
+          handle-api-error-arg (atom nil)]
+      (with-redefs [handle-api-error #(reset! handle-api-error-arg %)]
+        (airtable/select {:endpoint-url (:url server)
+                          :api-key "abc123"
+                          :base "base123"
+                          :table "My Table"})
+        (is (some? (:status @handle-api-error-arg)))))))
 
 (deftest select-integration-test
   (testing "simple record selection"

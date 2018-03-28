@@ -5,6 +5,7 @@
                                        parse-time
                                        make-url
                                        user-agent
+                                       handle-api-error
                                        api-version]]))
 
 (defn- format-record [record]
@@ -45,6 +46,7 @@
                               ;; :ignore-nested-query-string true}
                        (seq query-params) (assoc :query-params query-params))
         response (http/get url http-options)
+        _ (handle-api-error response)
         body (json/parse-string (:body response))]
     {:records (map format-record (body "records"))
      :offset (body "offset")}))
