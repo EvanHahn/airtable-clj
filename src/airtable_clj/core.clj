@@ -4,9 +4,8 @@
             [airtable-clj.util :refer [camelize-keyword
                                        parse-time
                                        make-url
-                                       user-agent
-                                       handle-api-error
-                                       api-version]]))
+                                       headers
+                                       handle-api-error]]))
 
 (defn- format-record [record]
   {:id (record "id")
@@ -26,21 +25,15 @@
        (into {})))
 
 (defn select
-  "Select records from an Airtable base."
-  [{:keys [endpoint-url
-           api-key
-           base
-           table] :as options}]
-  (let [url (make-url endpoint-url base table)
+  "Select records from an base."
+  [{:keys [api-key] :as options}]
+  (let [url (make-url options)
         query-params (->> (select-keys options (keys select-options))
                           (map (fn [[k v]]
                                  [(k select-options)
                                   (if (keyword? v) (name v) v)]))
                           (into {}))
-        headers {"X-API-Version" api-version
-                 "Authorization" (str "Bearer " api-key)
-                 "User-Agent" user-agent}
-        http-options (cond-> {:headers headers
+        http-options (cond-> {:headers (headers api-key)
                               :throw-exceptions false
                               :multi-param-style :array}
                        (seq query-params) (assoc :query-params query-params))
@@ -49,3 +42,13 @@
         body (json/parse-string (:body response))]
     {:records (map format-record (body "records"))
      :offset (body "offset")}))
+
+(defn retrieve
+  "Retrieve a single record from a base."
+  [{:keys [api-key record-id] :as options}]
+  (let [url (str (make-url options) "/" record-id)
+        response (http/get url {:headers (headers api-key)
+                                :throw-exceptions false})]
+    (when-not (= 404 (:status response))
+      (handle-api-error response)
+      (-> response :body json/parse-string format-record))))

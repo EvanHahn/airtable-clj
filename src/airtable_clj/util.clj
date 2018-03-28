@@ -10,13 +10,18 @@
 (def project-version (env :airtable-clj-version))
 (def user-agent (str "airtable-clj/" project-version))
 
+(defn headers [api-key]
+  {"X-API-Version" api-version
+   "Authorization" (str "Bearer " api-key)
+   "User-Agent" user-agent})
+
 (def ^:private date-format
   (SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"))
 (defn parse-time [s]
   (-> (.parse date-format s) .getTime))
 
-(defn make-url [base-url-string base table]
-  (let [base-url (URL. (or base-url-string "https://api.airtable.com"))
+(defn make-url [{:keys [endpoint-url base table]}]
+  (let [base-url (URL. (or endpoint-url "https://api.airtable.com"))
         protocol (.getProtocol base-url)
         host (.getHost base-url)
         port (.getPort base-url)
