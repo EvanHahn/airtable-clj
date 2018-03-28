@@ -43,7 +43,6 @@
         http-options (cond-> {:headers headers
                               :throw-exceptions false
                               :multi-param-style :array}
-                              ;; :ignore-nested-query-string true}
                        (seq query-params) (assoc :query-params query-params))
         response (http/get url http-options)
         _ (handle-api-error response)
