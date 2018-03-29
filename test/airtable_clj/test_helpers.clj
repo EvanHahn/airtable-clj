@@ -1,10 +1,17 @@
 (ns airtable-clj.test-helpers
   (:require [clojure.string :as string]
+            [environ.core :refer [env]]
             [cheshire.core :as json])
   (:import [okhttp3.mockwebserver MockWebServer MockResponse]
            [java.net URL]
            [java.util.logging Logger Level]
            [java.util.concurrent TimeUnit]))
+
+(def can-integration-test?
+  (every? #(contains? env %) [:airtable-api-key
+                              :airtable-base
+                              :airtable-table
+                              :airtable-record-id]))
 
 (defn- disable-mockwebserver-logger []
   (let [logger-name (.getName MockWebServer)
@@ -38,8 +45,7 @@
                    .toMultimap
                    (map (fn [[k v]] [k (first v)]))
                    (into {}))
-     }))
-   ;; :body (-> (.getBody mock-request) slurp json/parse-string)})
+     :body (-> (.getBody mock-request) .readUtf8 json/parse-string)}))
 
 (defn mock-server [responses]
   (disable-mockwebserver-logger)

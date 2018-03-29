@@ -2,9 +2,10 @@
   (:require [clojure.test :refer :all]
             [cheshire.core :as json]
             [environ.core :refer [env]]
-            [airtable-clj.test-helpers :refer [mock-server take-mock-request]]
+            [airtable-clj.test-helpers :refer [mock-server take-mock-request can-integration-test?]]
             [airtable-clj.core :as airtable]
-            [airtable-clj.util :refer [handle-api-error]]))
+            [airtable-clj.util :refer [handle-api-error]])
+  (:import [java.util Date]))
 
 (def fake-record-response
   {"id" "rec123"
@@ -19,12 +20,6 @@
    :created-time 1524241200000})
 
 (def expected-user-agent (str "airtable-clj/" (env :airtable-clj-version)))
-
-(def can-integration-test?
-  (every? #(contains? env %) [:airtable-api-key
-                              :airtable-base
-                              :airtable-table
-                              :airtable-record-id]))
 
 (deftest select-unit-test
   (testing "simple record selection"
@@ -96,23 +91,13 @@
       (let [result (airtable/select {:api-key (:airtable-api-key env)
                                      :base (:airtable-base env)
                                      :table (:airtable-table env)})
-            records (:records result)
-            relevant-keys ["Primary" "Single" "Formula" "Checkbox"]
-            record-fields (->> records
-                               (map :fields)
-                               (sort-by #(% "Primary"))
-                               (map #(select-keys % relevant-keys)))]
-        (is (nil? (:offset result)))
-        (is (= 3 (count records)))
-        (is (= {"Primary" 1
-                "Single" "Foo"
-                "Formula" 11} (first record-fields)))
-        (is (= {"Primary" 2
-                "Single" "Bar"
-                "Formula" 12
-                "Checkbox" true} (second record-fields)))
-        (is (= {"Primary" 3
-                "Formula" 13} (last record-fields)))))))
+            records (:records result)]
+        (is (seq records))
+        (doseq [record records]
+          (let [fields (:fields record)
+                primary (fields "Primary")
+                formula (fields "Formula")]
+            (is (= formula (+ primary 10)))))))))
 
 (deftest retrieve-unit-test
   (testing "retrieving a single record"
@@ -167,3 +152,69 @@
                                        :table (:airtable-table env)
                                        :record-id "recBogus"})]
         (is (nil? result))))))
+
+(deftest create-unit-test
+  (testing "record creation"
+    (let [server (mock-server [{:body fake-record-response}])
+          result (airtable/create {:endpoint-url (:url server)
+                                   :api-key "abc123"
+                                   :base "base123"
+                                   :table "My Table"
+                                   :fields {"Foo" "Boo"}})
+          request (take-mock-request server)
+          headers (:headers request)]
+      (is (= "/v0/base123/My%20Table" (:uri request)))
+      (is (= {} (:query-params request)))
+      (is (= :post (:request-method request)))
+      (is (= expected-user-agent (headers "user-agent")))
+      (is (= "0.1.0" (headers "x-api-version")))
+      (is (= "application/json" (headers "content-type")))
+      (is (= {"fields" {"Foo" "Boo"}} (:body request)))
+      (is (= fake-record result))))
+  (testing "typecast? parameter set to true"
+    (let [server (mock-server [{:body fake-record-response}])
+          result (airtable/create {:endpoint-url (:url server)
+                                   :api-key "abc123"
+                                   :base "base123"
+                                   :table "My Table"
+                                   :fields {"Foo" "Boo"}
+                                   :typecast? true})
+          request-body (:body (take-mock-request server))]
+      (is (= {"fields" {"Foo" "Boo"}
+              "typecast" true} request-body))))
+  (testing "typecast? parameter set to false"
+    (let [server (mock-server [{:body fake-record-response}])
+          result (airtable/create {:endpoint-url (:url server)
+                                   :api-key "abc123"
+                                   :base "base123"
+                                   :table "My Table"
+                                   :fields {"Foo" "Boo"}
+                                   :typecast? false})
+          request-body (:body (take-mock-request server))]
+      (is (= {"fields" {"Foo" "Boo"}} request-body))))
+  (testing "calls out to handle-api-error"
+    (let [server (mock-server [{:body fake-record-response}])
+          handle-api-error-arg (atom nil)]
+      (with-redefs [handle-api-error #(reset! handle-api-error-arg %)]
+        (airtable/select {:endpoint-url (:url server)
+                          :api-key "abc123"
+                          :base "base123"
+                          :table "My Table"
+                          :fields {"Foo" "Boo"}})
+        (is (some? (:status @handle-api-error-arg)))))))
+
+(deftest create-integration-test
+  (when can-integration-test?
+    (testing "record creation"
+      (let [value (str "Created on " (Date.))
+            result (airtable/create {:api-key (:airtable-api-key env)
+                                     :base (:airtable-base env)
+                                     :table (:airtable-table env)
+                                     :fields {"Single" value}})
+            fields (:fields result)
+            primary (get fields "Primary")
+            formula (get fields "Formula")]
+        (is (string? (:id result)))
+        (is (integer? (:created-time result)))
+        (is (= formula (+ primary 10)))
+        (is (= value (get fields "Single")))))))

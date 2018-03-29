@@ -10,7 +10,7 @@
 (def project-version (env :airtable-clj-version))
 (def user-agent (str "airtable-clj/" project-version))
 
-(defn headers [api-key]
+(defn request-headers [api-key]
   {"X-API-Version" api-version
    "Authorization" (str "Bearer " api-key)
    "User-Agent" user-agent})

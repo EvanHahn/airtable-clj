@@ -4,8 +4,10 @@
             [airtable-clj.util :refer [camelize-keyword
                                        parse-time
                                        make-url
-                                       headers
+                                       request-headers
                                        handle-api-error]]))
+
+;; TODO: :as :json (strict?) for response coercion
 
 (defn- format-record [record]
   {:id (record "id")
@@ -33,7 +35,7 @@
                                  [(k select-options)
                                   (if (keyword? v) (name v) v)]))
                           (into {}))
-        http-options (cond-> {:headers (headers api-key)
+        http-options (cond-> {:headers (request-headers api-key)
                               :throw-exceptions false
                               :multi-param-style :array}
                        (seq query-params) (assoc :query-params query-params))
@@ -47,8 +49,20 @@
   "Retrieve a single record from a base."
   [{:keys [api-key record-id] :as options}]
   (let [url (str (make-url options) "/" record-id)
-        response (http/get url {:headers (headers api-key)
+        response (http/get url {:headers (request-headers api-key)
                                 :throw-exceptions false})]
     (when-not (= 404 (:status response))
       (handle-api-error response)
       (-> response :body json/parse-string format-record))))
+
+(defn create
+  "Create a record in a base."
+  [{:keys [api-key fields typecast?] :as options}]
+  (let [url (make-url options)
+        body (cond-> {"fields" fields}
+               typecast? (assoc "typecast" true))
+        response (http/post url {:headers (request-headers api-key)
+                                 :content-type :json
+                                 :body (json/generate-string body)})]
+    (handle-api-error response)
+    (-> response :body json/parse-string format-record)))
