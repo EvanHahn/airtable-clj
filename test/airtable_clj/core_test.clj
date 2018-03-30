@@ -252,4 +252,13 @@
       (is (= expected-user-agent (headers "user-agent")))
       (is (= "0.1.0" (headers "x-api-version")))
       (is (= {:id "rec123"} result))))
-)
+  (testing "calls out to handle-api-error"
+    (let [server (mock-server [{:body fake-delete-response}])
+          handle-api-error-arg (atom nil)]
+      (with-redefs [handle-api-error #(reset! handle-api-error-arg %)]
+        (airtable/delete {:endpoint-url (:url server)
+                          :api-key "abc123"
+                          :base "base123"
+                          :table "My Table"
+                          :record-id "rec123"})
+        (is (some? (:status @handle-api-error-arg)))))))
