@@ -92,8 +92,10 @@
 
 (defn delete
   "Delete a record from a base."
-  [{:keys [api-key record-id] :as options}]
+  [{:keys [api-key record-id throw-if-not-found?] :as options}]
   (let [url (make-url options record-id)
-        response (http/delete url {:headers (request-headers api-key)})]
-    (handle-api-error response)
-    (-> response :body json/parse-string format-deletion)))
+        response (http/delete url {:headers (request-headers api-key)
+                                   :throw-exceptions false})]
+    (when-not (and (not throw-if-not-found?) (record-not-found? response))
+      (handle-api-error response)
+      (-> response :body json/parse-string format-deletion))))

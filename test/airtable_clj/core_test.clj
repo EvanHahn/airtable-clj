@@ -121,13 +121,12 @@
                                                 :table "My Table"
                                                 :record-id "rec123"})))))
   (testing "getting a record 404 should give nil by default"
-    (let [server (mock-server [fake-record-404-response])
-          result (airtable/retrieve {:endpoint-url (:url server)
-                                     :api-key "abc123"
-                                     :base "base123"
-                                     :table "My Table"
-                                     :record-id "rec123"})]
-      (is (nil? result))))
+    (let [server (mock-server [fake-record-404-response])]
+      (is (nil? (airtable/retrieve {:endpoint-url (:url server)
+                                    :api-key "abc123"
+                                    :base "base123"
+                                    :table "My Table"
+                                    :record-id "rec123"})))))
   (testing "getting a record 404 can throw an error"
     (let [server (mock-server [fake-404-response])]
       (is (thrown-with-msg? Throwable #"NOT_FOUND"
@@ -279,6 +278,30 @@
       (is (= expected-user-agent (headers "user-agent")))
       (is (= "0.1.0" (headers "x-api-version")))
       (is (= {:id "rec123"} result))))
+  (testing "getting a non-record 404 should throw"
+    (let [server (mock-server [fake-404-response])]
+      (is (thrown-with-msg? Throwable #"NOT_FOUND"
+                            (airtable/delete {:endpoint-url (:url server)
+                                              :api-key "abc123"
+                                              :base "base123"
+                                              :table "My Table"
+                                              :record-id "rec123"})))))
+  (testing "getting a record 404 should give nil by default"
+    (let [server (mock-server [fake-record-404-response])]
+      (nil? (airtable/delete {:endpoint-url (:url server)
+                              :api-key "abc123"
+                              :base "base123"
+                              :table "My Table"
+                              :record-id "rec123"}))))
+  (testing "getting a record 404 can throw an error"
+    (let [server (mock-server [fake-404-response])]
+      (is (thrown-with-msg? Throwable #"NOT_FOUND"
+                            (airtable/delete {:endpoint-url (:url server)
+                                              :api-key "abc123"
+                                              :base "base123"
+                                              :table "My Table"
+                                              :record-id "rec123"
+                                              :throw-if-not-found? true})))))
   (testing "calls out to handle-api-error"
     (let [server (mock-server [{:body fake-delete-response}])
           handle-api-error-arg (atom nil)]
