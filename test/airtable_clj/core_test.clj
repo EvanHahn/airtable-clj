@@ -5,14 +5,14 @@
             [airtable-clj.core :as airtable]
             [airtable-clj.util :refer [handle-api-error]]))
 
-(def fake-record-response
+(def ^:private fake-record-response
   {"id" "rec123"
    "fields" {"foo" "boo"
              "friend" "rec123"
              "bar" 123}
    "createdTime" "2018-04-20T16:20:00.000Z"})
 
-(def fake-record
+(def ^:private fake-record
   {:id (fake-record-response "id")
    :fields (fake-record-response "fields")
    :created-time 1524241200000})
