@@ -13,3 +13,17 @@ You can do this however you like, but something like this should work:
 ```sh
 AIRTABLE_API_KEY=keyAbCdEfGhIjKlMn AIRTABLE_BASE=appAbCdeFgHiJkLmN AIRTABLE_TABLE='My Table' lein test
 ```
+
+## Linting and testing
+
+To run tests:
+
+```sh
+lein test
+```
+
+To format the code:
+
+```sh
+lein cljfmt fix
+```
