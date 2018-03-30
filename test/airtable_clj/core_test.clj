@@ -1,11 +1,9 @@
 (ns airtable-clj.core-test
   (:require [clojure.test :refer :all]
-            [cheshire.core :as json]
             [environ.core :refer [env]]
-            [airtable-clj.test-helpers :refer [mock-server take-mock-request can-integration-test?]]
+            [airtable-clj.test-helpers :refer [mock-server take-mock-request]]
             [airtable-clj.core :as airtable]
-            [airtable-clj.util :refer [handle-api-error]])
-  (:import [java.util Date]))
+            [airtable-clj.util :refer [handle-api-error]]))
 
 (def fake-record-response
   {"id" "rec123"
@@ -85,20 +83,6 @@
                           :table "My Table"})
         (is (some? (:status @handle-api-error-arg)))))))
 
-(deftest select-integration-test
-  (when can-integration-test?
-    (testing "simple record selection"
-      (let [result (airtable/select {:api-key (:airtable-api-key env)
-                                     :base (:airtable-base env)
-                                     :table (:airtable-table env)})
-            records (:records result)]
-        (is (seq records))
-        (doseq [record records]
-          (let [fields (:fields record)
-                primary (fields "Primary")
-                formula (fields "Formula")]
-            (is (= formula (+ primary 10)))))))))
-
 (deftest retrieve-unit-test
   (testing "retrieving a single record"
     (let [server (mock-server [{:body fake-record-response}])
@@ -134,24 +118,6 @@
                             :table "My Table"
                             :record-id "rec123"})
         (is (some? (:status @handle-api-error-arg)))))))
-
-(deftest retrieve-integration-test
-  (when can-integration-test?
-    (testing "retrieving a single record"
-      (let [record-id (:airtable-record-id env)
-            result (airtable/retrieve {:api-key (:airtable-api-key env)
-                                       :base (:airtable-base env)
-                                       :table (:airtable-table env)
-                                       :record-id record-id})]
-        (is (= record-id (:id result)))
-        (is (map? (:fields result)))
-        (is (integer? (:created-time result)))))
-    (testing "retrieving nothing"
-      (let [result (airtable/retrieve {:api-key (:airtable-api-key env)
-                                       :base (:airtable-base env)
-                                       :table (:airtable-table env)
-                                       :record-id "recBogus"})]
-        (is (nil? result))))))
 
 (deftest create-unit-test
   (testing "record creation"
@@ -203,18 +169,67 @@
                           :fields {"Foo" "Boo"}})
         (is (some? (:status @handle-api-error-arg)))))))
 
-(deftest create-integration-test
-  (when can-integration-test?
-    (testing "record creation"
-      (let [value (str "Created on " (Date.))
-            result (airtable/create {:api-key (:airtable-api-key env)
-                                     :base (:airtable-base env)
-                                     :table (:airtable-table env)
-                                     :fields {"Single" value}})
-            fields (:fields result)
-            primary (get fields "Primary")
-            formula (get fields "Formula")]
-        (is (string? (:id result)))
-        (is (integer? (:created-time result)))
-        (is (= formula (+ primary 10)))
-        (is (= value (get fields "Single")))))))
+(deftest modify-unit-test
+  (testing "modifying a record"
+    (let [server (mock-server [{:body fake-record-response}])
+          result (airtable/modify {:endpoint-url (:url server)
+                                   :api-key "abc123"
+                                   :base "base123"
+                                   :table "My Table"
+                                   :record-id "rec123"
+                                   :fields {"Foo" "Boo"}})
+          request (take-mock-request server)
+          headers (:headers request)]
+      (is (= "/v0/base123/My%20Table/rec123" (:uri request)))
+      (is (= {} (:query-params request)))
+      (is (= :patch (:request-method request)))
+      (is (= expected-user-agent (headers "user-agent")))
+      (is (= "0.1.0" (headers "x-api-version")))
+      (is (= {"fields" {"Foo" "Boo"}} (:body request)))
+      (is (= fake-record result))))
+  (testing "clobbering a record"
+    (let [server (mock-server [{:body fake-record-response}])
+          _ (airtable/modify {:endpoint-url (:url server)
+                              :api-key "abc123"
+                              :base "base123"
+                              :table "My Table"
+                              :record-id "rec123"
+                              :fields {"Foo" "Boo"}
+                              :clobber? true})
+          request (take-mock-request server)]
+      (is (= :put (:request-method request)))
+      (is (= {"fields" {"Foo" "Boo"}} (:body request)))))
+  (testing "typecast? parameter set to true"
+    (let [server (mock-server [{:body fake-record-response}])
+          _ (airtable/modify {:endpoint-url (:url server)
+                              :api-key "abc123"
+                              :base "base123"
+                              :table "My Table"
+                              :record-id "rec123"
+                              :fields {"Foo" "Boo"}
+                              :typecast? true})
+          request (take-mock-request server)]
+      (is (= {"fields" {"Foo" "Boo"}
+              "typecast" true} (:body request)))))
+  (testing "typecast? parameter set to false"
+    (let [server (mock-server [{:body fake-record-response}])
+          _ (airtable/modify {:endpoint-url (:url server)
+                              :api-key "abc123"
+                              :base "base123"
+                              :table "My Table"
+                              :record-id "rec123"
+                              :fields {"Foo" "Boo"}
+                              :typecast? false})
+          request (take-mock-request server)]
+      (is (= {"fields" {"Foo" "Boo"}} (:body request)))))
+  (testing "calls out to handle-api-error"
+    (let [server (mock-server [{:body fake-record-response}])
+          handle-api-error-arg (atom nil)]
+      (with-redefs [handle-api-error #(reset! handle-api-error-arg %)]
+        (airtable/modify {:endpoint-url (:url server)
+                          :api-key "abc123"
+                          :base "base123"
+                          :table "My Table"
+                          :record-id "rec123"
+                          :fields {"Foo" "Boo"}})
+        (is (some? (:status @handle-api-error-arg)))))))

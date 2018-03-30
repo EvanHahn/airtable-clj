@@ -48,7 +48,7 @@
 (defn retrieve
   "Retrieve a single record from a base."
   [{:keys [api-key record-id] :as options}]
-  (let [url (str (make-url options) "/" record-id)
+  (let [url (make-url options record-id)
         response (http/get url {:headers (request-headers api-key)
                                 :throw-exceptions false})]
     (when-not (= 404 (:status response))
@@ -64,5 +64,18 @@
         response (http/post url {:headers (request-headers api-key)
                                  :content-type :json
                                  :body (json/generate-string body)})]
+    (handle-api-error response)
+    (-> response :body json/parse-string format-record)))
+
+(defn modify
+  "Update a record in a base."
+  [{:keys [api-key record-id fields clobber? typecast?] :as options}]
+  (let [url (make-url options record-id)
+        body (cond-> {"fields" fields}
+               typecast? (assoc "typecast" true))
+        http-fn (if clobber? http/put http/patch)
+        response (http-fn url {:headers (request-headers api-key)
+                               :content-type :json
+                               :body (json/generate-string body)})]
     (handle-api-error response)
     (-> response :body json/parse-string format-record)))

@@ -20,13 +20,16 @@
 (defn parse-time [s]
   (-> (.parse date-format s) .getTime))
 
-(defn make-url [{:keys [endpoint-url base table]}]
-  (let [base-url (URL. (or endpoint-url "https://api.airtable.com"))
-        protocol (.getProtocol base-url)
-        host (.getHost base-url)
-        port (.getPort base-url)
-        path (str "/v0/" base "/" table)]
-    (-> (URL. protocol host port path) str)))
+(defn make-url
+  ([{:keys [endpoint-url base table]}]
+   (let [base-url (URL. (or endpoint-url "https://api.airtable.com"))
+         protocol (.getProtocol base-url)
+         host (.getHost base-url)
+         port (.getPort base-url)
+         path (str "/v0/" base "/" table)]
+     (-> (URL. protocol host port path) str)))
+  ([options suffix]
+   (str (make-url options) "/" suffix)))
 
 (defn camelize-keyword [k]
   (-> (name k)
