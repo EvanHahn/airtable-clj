@@ -30,7 +30,7 @@
   {"id" "rec123"
    "deleted" true})
 
-(def expected-user-agent (str "airtable-clj/" (env :airtable-clj-version)))
+(def ^:private expected-user-agent (str "airtable-clj/" (env :airtable-clj-version)))
 
 (deftest select-unit-test
   (testing "simple record selection"
