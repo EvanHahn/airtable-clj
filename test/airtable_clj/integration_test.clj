@@ -47,11 +47,10 @@
                                                     :fields {"Checkbox" true}
                                                     :clobber? true}))
           clobber-expected (update modify-result :fields dissoc "Single")
-          ]
+          delete-result (airtable/delete (options {:record-id record-id}))]
       (check-record create-result)
       (is (= single-value (get-in create-result [:fields "Single"])))
       (is (= create-result retrieve-result))
       (is (= modify-expected modify-result))
       (is (= clobber-expected clobber-result))
-  )
-))
+      (is (= {:id record-id} delete-result)))))

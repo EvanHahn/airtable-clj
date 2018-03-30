@@ -14,6 +14,9 @@
    :fields (record "fields")
    :created-time (parse-time (record "createdTime"))})
 
+(defn- format-deletion [response]
+  {:id (response "id")})
+
 (def ^:private select-options
   (->> [:fields
         :filter-by-formula
@@ -79,3 +82,11 @@
                                :body (json/generate-string body)})]
     (handle-api-error response)
     (-> response :body json/parse-string format-record)))
+
+(defn delete
+  "Delete a record from a base."
+  [{:keys [api-key record-id] :as options}]
+  (let [url (make-url options record-id)
+        response (http/delete url {:headers (request-headers api-key)})]
+    (handle-api-error response)
+    (-> response :body json/parse-string format-deletion)))

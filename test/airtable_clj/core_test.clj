@@ -11,11 +11,13 @@
              "friend" "rec123"
              "bar" 123}
    "createdTime" "2018-04-20T16:20:00.000Z"})
-
 (def ^:private fake-record
   {:id (fake-record-response "id")
    :fields (fake-record-response "fields")
    :created-time 1524241200000})
+(def ^:private fake-delete-response
+  {"id" "rec123"
+   "deleted" true})
 
 (def expected-user-agent (str "airtable-clj/" (env :airtable-clj-version)))
 
@@ -233,3 +235,21 @@
                           :record-id "rec123"
                           :fields {"Foo" "Boo"}})
         (is (some? (:status @handle-api-error-arg)))))))
+
+(deftest delete-unit-test
+  (testing "deleting a record"
+    (let [server (mock-server [{:body fake-delete-response}])
+          result (airtable/delete {:endpoint-url (:url server)
+                                   :api-key "abc123"
+                                   :base "base123"
+                                   :table "My Table"
+                                   :record-id "rec123"})
+          request (take-mock-request server)
+          headers (:headers request)]
+      (is (= "/v0/base123/My%20Table/rec123" (:uri request)))
+      (is (= {} (:query-params request)))
+      (is (= :delete (:request-method request)))
+      (is (= expected-user-agent (headers "user-agent")))
+      (is (= "0.1.0" (headers "x-api-version")))
+      (is (= {:id "rec123"} result))))
+)
