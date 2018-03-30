@@ -43,7 +43,10 @@
 (defn handle-api-error [response]
   (let [status (:status response)
         body (maybe-parse-json (:body response))
-        api-error-message (get-in body ["error" "message"])
+        api-error (get body "error")
+        api-error-message (if (string? api-error)
+                            api-error
+                            (get api-error "message"))
         error-message (cond
                         api-error-message api-error-message
                         (= status 401) "Unauthorized. Check your API key."

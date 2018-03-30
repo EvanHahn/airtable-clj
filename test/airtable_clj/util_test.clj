@@ -23,6 +23,8 @@
     (is (thrown-with-msg? Throwable #"(?i)not found"
                           (handle-api-error (status 404))))
     (is (thrown-with-msg? Throwable #"bing bong"
+                          (handle-api-error (response 404 {"error" "bing bong"}))))
+    (is (thrown-with-msg? Throwable #"bing bong"
                           (handle-api-error (response 404 {"error" {"message" "bing bong"}})))))
   (testing "413 errors"
     (is (thrown-with-msg? Throwable #"(?i)too large"

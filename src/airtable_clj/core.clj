@@ -17,6 +17,13 @@
 (defn- format-deletion [response]
   {:id (response "id")})
 
+(defn- record-not-found? [response]
+  (let [error-type (-> (:body response)
+                       json/parse-string
+                       (get-in ["error" "type"]))]
+    (and (= 404 (:status response))
+         (= "MODEL_ID_NOT_FOUND" error-type))))
+
 (def ^:private select-options
   (->> [:fields
         :filter-by-formula
@@ -50,11 +57,11 @@
 
 (defn retrieve
   "Retrieve a single record from a base."
-  [{:keys [api-key record-id] :as options}]
+  [{:keys [api-key record-id throw-if-not-found?] :as options}]
   (let [url (make-url options record-id)
         response (http/get url {:headers (request-headers api-key)
                                 :throw-exceptions false})]
-    (when-not (= 404 (:status response))
+    (when-not (and (not throw-if-not-found?) (record-not-found? response))
       (handle-api-error response)
       (-> response :body json/parse-string format-record))))
 

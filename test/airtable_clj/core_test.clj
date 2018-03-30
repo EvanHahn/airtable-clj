@@ -11,10 +11,21 @@
              "friend" "rec123"
              "bar" 123}
    "createdTime" "2018-04-20T16:20:00.000Z"})
+
 (def ^:private fake-record
   {:id (fake-record-response "id")
    :fields (fake-record-response "fields")
    :created-time 1524241200000})
+
+(def ^:private fake-404-response
+  {:status 404
+   :body {"error" "NOT_FOUND"}})
+
+(def ^:private fake-record-404-response
+  {:status 404
+   :body {"error" {"type" "MODEL_ID_NOT_FOUND"
+                   "message" "Not found!!"}}})
+
 (def ^:private fake-delete-response
   {"id" "rec123"
    "deleted" true})
@@ -101,15 +112,31 @@
       (is (= expected-user-agent (headers "user-agent")))
       (is (= "0.1.0" (headers "x-api-version")))
       (is (= fake-record result))))
-  (testing "getting a 404 should give nil"
-    (let [server (mock-server [{:status 404
-                                :body {:error "NOT_FOUND"}}])
+  (testing "getting a non-record 404 should throw"
+    (let [server (mock-server [fake-404-response])]
+      (is (thrown-with-msg? Throwable #"NOT_FOUND"
+                            (airtable/retrieve {:endpoint-url (:url server)
+                                                :api-key "abc123"
+                                                :base "base123"
+                                                :table "My Table"
+                                                :record-id "rec123"})))))
+  (testing "getting a record 404 should give nil by default"
+    (let [server (mock-server [fake-record-404-response])
           result (airtable/retrieve {:endpoint-url (:url server)
                                      :api-key "abc123"
                                      :base "base123"
                                      :table "My Table"
                                      :record-id "rec123"})]
       (is (nil? result))))
+  (testing "getting a record 404 can throw an error"
+    (let [server (mock-server [fake-404-response])]
+      (is (thrown-with-msg? Throwable #"NOT_FOUND"
+                            (airtable/retrieve {:endpoint-url (:url server)
+                                                :api-key "abc123"
+                                                :base "base123"
+                                                :table "My Table"
+                                                :record-id "rec123"
+                                                :throw-if-not-found? true})))))
   (testing "calls out to handle-api-error"
     (let [server (mock-server [{:body fake-record-response}])
           handle-api-error-arg (atom nil)]
