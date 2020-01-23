@@ -22,7 +22,7 @@
 
 (defn make-url
   ([{:keys [endpoint-url base table]}]
-   (let [base-url (URL. (or endpoint-url "https://api.airtable.com"))
+   (let [base-url (URL. (or endpoint-url "https://api.airtable.com/"))
          protocol (.getProtocol base-url)
          host (.getHost base-url)
          port (.getPort base-url)

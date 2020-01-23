@@ -1,18 +1,12 @@
-# airtable-clj
-
 Clojure interface to [Airtable's API](https://airtable.com/api).
-
-Work in progress!
-
-## Usage
 
 ```clojure
 (ns my-project.uses-airtable
   (:require [airtable-clj.core :as airtable]
             [environ.core :refer [env]))
 
-(def api-key (:airtable-api-key env))
-(def base (:airtable-base-id env))
+(def api-key "key")
+(def base "base")
 (def table "My Table")
 
 (def five-records
