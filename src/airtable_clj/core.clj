@@ -32,12 +32,15 @@
         :view
         :cell-format
         :time-zone
-        :user-locale]
+        :user-locale
+        :offset]
        (map (fn [param] [param (camelize-keyword param)]))
        (into {})))
 
 (defn select
-  "Select records from an base."
+  "Select records from an base. Given no :max-records fetches all records from databse. Note that Airtable has limits (https://airtable.com/apphcc8KILQ6JFn4G/api/docs#curl/ratelimits) on reqests per time.
+  On 03.03.2020:
+  > The API is limited to 5 requests per second per base. If you exceed this rate, you will receive a 429 status code and will need to wait 30 seconds before subsequent requests will succeed."
   [{:keys [api-key] :as options}]
   (let [url (make-url options)
         query-params (->> (select-keys options (keys select-options))
@@ -51,9 +54,16 @@
                        (seq query-params) (assoc :query-params query-params))
         response (http/get url http-options)
         _ (handle-api-error response)
-        body (json/parse-string (:body response))]
-    {:records (map format-record (body "records"))
-     :offset (body "offset")}))
+        body (json/parse-string (response :body))
+        offset (body "offset")
+        records (map format-record (body "records"))]
+    (if (< (count records) 100)
+     {:records records :offset offset}
+      (let
+          [new-data (select (assoc options :offset offset))
+           new-records (new-data :records)
+           new-offset (new-data :offset)]
+        {:records (concat records new-records) :offset new-offset}))))
 
 (defn retrieve
   "Retrieve a single record from a base."
