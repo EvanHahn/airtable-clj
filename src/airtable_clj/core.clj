@@ -38,9 +38,7 @@
        (into {})))
 
 (defn select
-  "Select records from an base. Given no :max-records fetches all records from databse. Note that Airtable has limits (https://airtable.com/apphcc8KILQ6JFn4G/api/docs#curl/ratelimits) on reqests per time.
-  On 03.03.2020:
-  > The API is limited to 5 requests per second per base. If you exceed this rate, you will receive a 429 status code and will need to wait 30 seconds before subsequent requests will succeed."
+  "Select records from an base. Given no :max-records fetches all records from database."
   [{:keys [api-key] :as options}]
   (let [url (make-url options)
         query-params (->> (select-keys options (keys select-options))
@@ -53,7 +51,7 @@
                               :multi-param-style :array}
                        (seq query-params) (assoc :query-params query-params))
         response (http/get url http-options)
-        _ (handle-api-error response)
+        _ (handle-api-error response select options)
         body (json/parse-string (response :body))
         offset (body "offset")
         records (map format-record (body "records"))]

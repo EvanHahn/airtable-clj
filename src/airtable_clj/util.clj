@@ -40,7 +40,9 @@
     (json/parse-string s)
     (catch JsonParseException _ nil)))
 
-(defn handle-api-error [response]
+(defn handle-api-error
+  "This function can handle 429 (too many requests) error in the following way: if no `request` passed — than it just returns error, else — in case of 429 error, it's delays for 1 second and tries `request` again."
+  [response & [request options]]
   (let [status (:status response)
         body (maybe-parse-json (:body response))
         api-error (get body "error")
@@ -59,5 +61,9 @@
                         (>= status 500) "Server error."
                         (>= status 400) "Bad request.")]
     (if error-message
-      (throw (ex-info error-message {:type (get-in body ["error" "type"])
-                                     :response response})))))
+      (if (and (not (nil? request)) ((= status 429) api-error-message))
+        ;; If function given request and status 429
+        (do (Thread/sleep 1000) (request options))
+        (throw (ex-info error-message {:type (get-in body ["error" "type"])
+                                       :response response}))))))
+
