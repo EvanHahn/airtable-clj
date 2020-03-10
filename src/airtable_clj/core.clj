@@ -1,7 +1,6 @@
 (ns airtable-clj.core
   (:require [clj-http.client :as http]
             [cheshire.core :as json]
-            [debux.core :as debux]
             [airtable-clj.util :refer [camelize-keyword
                                        parse-time
                                        make-url

@@ -70,4 +70,3 @@
         (throw (ex-info error-message {:type (get-in body ["error" "type"])
                                        :response response})))
       body)))
-
