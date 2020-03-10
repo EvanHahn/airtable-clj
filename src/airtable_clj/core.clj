@@ -1,11 +1,12 @@
 (ns airtable-clj.core
   (:require [clj-http.client :as http]
             [cheshire.core :as json]
+            [debux.core :as debux]
             [airtable-clj.util :refer [camelize-keyword
                                        parse-time
                                        make-url
                                        request-headers
-                                       handle-api-error]]))
+                                       parse-response]]))
 
 ;; TODO: :as :json (strict?) for response coercion
 
@@ -32,12 +33,13 @@
         :view
         :cell-format
         :time-zone
-        :user-locale]
+        :user-locale
+        :offset]
        (map (fn [param] [param (camelize-keyword param)]))
        (into {})))
 
 (defn select
-  "Select records from an base."
+  "Select records from an base. Given no :max-records fetches all records from database."
   [{:keys [api-key] :as options}]
   (let [url (make-url options)
         query-params (->> (select-keys options (keys select-options))
@@ -46,14 +48,20 @@
                                   (if (keyword? v) (name v) v)]))
                           (into {}))
         http-options (cond-> {:headers (request-headers api-key)
-                              :throw-exceptions false
+                              :cookie-policy :none
+                              :throw-exceptions true
                               :multi-param-style :array}
                        (seq query-params) (assoc :query-params query-params))
-        response (http/get url http-options)
-        _ (handle-api-error response)
-        body (json/parse-string (:body response))]
-    {:records (map format-record (body "records"))
-     :offset (body "offset")}))
+        result (parse-response (http/get url http-options) #(select options))
+        offset (result "offset")
+        records (map format-record (result "records"))]
+    (if (< (count records) 100)
+      {:records records :offset offset}
+      (let
+       [new-data (select (assoc options :offset offset))
+        new-records (new-data :records)
+        new-offset (new-data :offset)]
+        {:records (concat records new-records) :offset new-offset}))))
 
 (defn retrieve
   "Retrieve a single record from a base."
@@ -62,7 +70,7 @@
         response (http/get url {:headers (request-headers api-key)
                                 :throw-exceptions false})]
     (when-not (and (not throw-if-not-found?) (record-not-found? response))
-      (handle-api-error response)
+      (parse-response response)
       (-> response :body json/parse-string format-record))))
 
 (defn create
@@ -74,7 +82,7 @@
         response (http/post url {:headers (request-headers api-key)
                                  :content-type :json
                                  :body (json/generate-string body)})]
-    (handle-api-error response)
+    (parse-response response)
     (-> response :body json/parse-string format-record)))
 
 (defn modify
@@ -87,7 +95,7 @@
         response (http-fn url {:headers (request-headers api-key)
                                :content-type :json
                                :body (json/generate-string body)})]
-    (handle-api-error response)
+    (parse-response response)
     (-> response :body json/parse-string format-record)))
 
 (defn delete
@@ -97,5 +105,5 @@
         response (http/delete url {:headers (request-headers api-key)
                                    :throw-exceptions false})]
     (when-not (and (not throw-if-not-found?) (record-not-found? response))
-      (handle-api-error response)
+      (parse-response response)
       (-> response :body json/parse-string format-deletion))))
