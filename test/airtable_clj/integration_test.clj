@@ -4,7 +4,7 @@
             [environ.core :refer [env]]
             [airtable-clj.test-helpers :refer [can-integration-test?]]
             [airtable-clj.core :as airtable]
-            [airtable-clj.util :refer [handle-api-error]])
+            [airtable-clj.util :refer [parse-response]])
   (:import [java.util Date]))
 
 (defn- pause [] (Thread/sleep 1000))

@@ -3,7 +3,7 @@
             [environ.core :refer [env]]
             [airtable-clj.test-helpers :refer [mock-server take-mock-request]]
             [airtable-clj.core :as airtable]
-            [airtable-clj.util :refer [handle-api-error]]))
+            [airtable-clj.util :refer [parse-response]]))
 
 (def ^:private fake-record-response
   {"id" "rec123"
@@ -86,15 +86,15 @@
               "cellFormat" ["json"]
               "timeZone" ["Africa%2FAlgiers"]
               "userLocale" ["bo"]} (:query-params request)))))
-  (testing "calls out to handle-api-error"
+  (testing "calls out to parse-response"
     (let [server (mock-server [{:body {:records []}}])
-          handle-api-error-arg (atom nil)]
-      (with-redefs [handle-api-error #(reset! handle-api-error-arg %)]
+          parse-response-arg (atom nil)]
+      (with-redefs [parse-response #(reset! parse-response-arg %)]
         (airtable/select {:endpoint-url (:url server)
                           :api-key "abc123"
                           :base "base123"
                           :table "My Table"})
-        (is (some? (:status @handle-api-error-arg)))))))
+        (is (some? (:status @parse-response-arg)))))))
 
 (deftest retrieve-unit-test
   (testing "retrieving a single record"
@@ -136,16 +136,16 @@
                                                 :table "My Table"
                                                 :record-id "rec123"
                                                 :throw-if-not-found? true})))))
-  (testing "calls out to handle-api-error"
+  (testing "calls out to parse-response"
     (let [server (mock-server [{:body fake-record-response}])
-          handle-api-error-arg (atom nil)]
-      (with-redefs [handle-api-error #(reset! handle-api-error-arg %)]
+          parse-response-arg (atom nil)]
+      (with-redefs [parse-response #(reset! parse-response-arg %)]
         (airtable/retrieve {:endpoint-url (:url server)
                             :api-key "abc123"
                             :base "base123"
                             :table "My Table"
                             :record-id "rec123"})
-        (is (some? (:status @handle-api-error-arg)))))))
+        (is (some? (:status @parse-response-arg)))))))
 
 (deftest create-unit-test
   (testing "record creation"
@@ -186,16 +186,16 @@
                                    :typecast? false})
           request-body (:body (take-mock-request server))]
       (is (= {"fields" {"Foo" "Boo"}} request-body))))
-  (testing "calls out to handle-api-error"
+  (testing "calls out to parse-response"
     (let [server (mock-server [{:body fake-record-response}])
-          handle-api-error-arg (atom nil)]
-      (with-redefs [handle-api-error #(reset! handle-api-error-arg %)]
+          parse-response-arg (atom nil)]
+      (with-redefs [parse-response #(reset! parse-response-arg %)]
         (airtable/select {:endpoint-url (:url server)
                           :api-key "abc123"
                           :base "base123"
                           :table "My Table"
                           :fields {"Foo" "Boo"}})
-        (is (some? (:status @handle-api-error-arg)))))))
+        (is (some? (:status @parse-response-arg)))))))
 
 (deftest modify-unit-test
   (testing "modifying a record"
@@ -250,17 +250,17 @@
                               :typecast? false})
           request (take-mock-request server)]
       (is (= {"fields" {"Foo" "Boo"}} (:body request)))))
-  (testing "calls out to handle-api-error"
+  (testing "calls out to parse-response"
     (let [server (mock-server [{:body fake-record-response}])
-          handle-api-error-arg (atom nil)]
-      (with-redefs [handle-api-error #(reset! handle-api-error-arg %)]
+          parse-response-arg (atom nil)]
+      (with-redefs [parse-response #(reset! parse-response-arg %)]
         (airtable/modify {:endpoint-url (:url server)
                           :api-key "abc123"
                           :base "base123"
                           :table "My Table"
                           :record-id "rec123"
                           :fields {"Foo" "Boo"}})
-        (is (some? (:status @handle-api-error-arg)))))))
+        (is (some? (:status @parse-response-arg)))))))
 
 (deftest delete-unit-test
   (testing "deleting a record"
@@ -302,13 +302,13 @@
                                               :table "My Table"
                                               :record-id "rec123"
                                               :throw-if-not-found? true})))))
-  (testing "calls out to handle-api-error"
+  (testing "calls out to parse-response"
     (let [server (mock-server [{:body fake-delete-response}])
-          handle-api-error-arg (atom nil)]
-      (with-redefs [handle-api-error #(reset! handle-api-error-arg %)]
+          parse-response-arg (atom nil)]
+      (with-redefs [parse-response #(reset! parse-response-arg %)]
         (airtable/delete {:endpoint-url (:url server)
                           :api-key "abc123"
                           :base "base123"
                           :table "My Table"
                           :record-id "rec123"})
-        (is (some? (:status @handle-api-error-arg)))))))
+        (is (some? (:status @parse-response-arg)))))))
